@@ -14,20 +14,20 @@ interface UseAuthStateReturn extends CommonUseAuthStateReturn<SessionData> {
 }
 
 export const useAuthState = (): UseAuthStateReturn => {
-  const config = useTypedBackendConfig(useRuntimeConfig(), 'local')
+  const config = useTypedBackendConfig(useRuntimeConfig(), 'cookie')
   const commonAuthState = makeCommonAuthState<SessionData>()
 
   // Re-construct state from cookie, also setup a cross-component sync via a useState hack, see https://github.com/nuxt/nuxt/issues/13020#issuecomment-1397282717
-  const _rawTokenCookie = useCookie<string | null>('auth:token', { default: () => null, maxAge: config.token.maxAgeInSeconds, sameSite: 'lax' })
+  const _rawTokenCookie = useCookie<string | null>(config.cookie.name, { default: () => null, maxAge: config.token.maxAgeInSeconds, sameSite: 'lax' })
 
-  const rawToken = useState('auth:raw-token', () => _rawTokenCookie.value)
+  const rawToken = useState(`${config.cookie.name}:raw-token`, () => _rawTokenCookie.value)
   watch(rawToken, () => { _rawTokenCookie.value = rawToken.value })
 
   const token = computed(() => {
     if (rawToken.value === null) {
       return null
     }
-    return config.token.type.length > 0 ? `${config.token.type} ${rawToken.value}` : rawToken.value
+    return rawToken.value
   })
 
   const schemeSpecificState = {

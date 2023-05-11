@@ -1,23 +1,36 @@
-import { readonly, Ref } from 'vue'
 import { callWithNuxt } from '#app'
-import { CommonUseAuthReturn, SignOutFunc, SignInFunc, GetSessionFunc, SecondarySignInOptions } from '../../types'
-import { _fetch } from '../../utils/fetch'
 import { jsonPointerGet, useTypedBackendConfig } from '../../helpers'
+import { useAuth as useLocalAuth } from '../local/useAuth'
+import { _fetch } from '../../utils/fetch'
 import { getRequestURLWN } from '../../utils/callWithNuxt'
-import type { SessionData } from './useAuthState'
+import { SignOutFunc } from '../../types'
 import { useAuthState } from './useAuthState'
-import { useNuxtApp, useRuntimeConfig, nextTick, navigateTo } from '#imports'
+import { navigateTo, nextTick, useNuxtApp, useRuntimeConfig } from '#imports'
 
-interface Credentials {
-  username: string
-  password: string
+const csrfRequest = async () => {
+  const nuxt = useNuxtApp()
+  const config = useTypedBackendConfig(useRuntimeConfig(), 'cookie')
+  const { path, method } = config.endpoints.csrf
+  return await _fetch<Record<string, any>>(nuxt, path, {
+    method
+  })
 }
 
-const signIn: SignInFunc<Credentials, any> = async (credentials, signInOptions, signInParams) => {
+const signIn: ReturnType<typeof useLocalAuth>['signIn'] = async (credentials, signInOptions, signInParams) => {
   const nuxt = useNuxtApp()
-
-  const config = useTypedBackendConfig(useRuntimeConfig(), 'local')
+  const { rawToken } = useAuthState()
+  const { getSession } = useLocalAuth()
+  const config = useTypedBackendConfig(useRuntimeConfig(), 'cookie')
   const { path, method } = config.endpoints.signIn
+
+  // Ditch any leftover local tokens before attempting to log in
+  rawToken.value = null
+
+  // Make CSRF request if required
+  if (config.endpoints.csrf) {
+    await csrfRequest()
+  }
+
   const response = await _fetch<Record<string, any>>(nuxt, path, {
     method,
     body: {
@@ -33,7 +46,6 @@ const signIn: SignInFunc<Credentials, any> = async (credentials, signInOptions, 
     return
   }
 
-  const { rawToken } = useAuthState()
   rawToken.value = extractedToken
 
   await nextTick(getSession)
@@ -48,10 +60,10 @@ const signIn: SignInFunc<Credentials, any> = async (credentials, signInOptions, 
 const signOut: SignOutFunc = async (signOutOptions) => {
   const nuxt = useNuxtApp()
   const runtimeConfig = await callWithNuxt(nuxt, useRuntimeConfig)
-  const config = useTypedBackendConfig(runtimeConfig, 'local')
+  const config = useTypedBackendConfig(runtimeConfig, 'cookie')
   const { data, rawToken, token } = await callWithNuxt(nuxt, useAuthState)
 
-  const headers = new Headers({ [config.token.headerName]: token.value } as HeadersInit)
+  const headers = new Headers({ [config.cookie.name]: token.value } as HeadersInit)
   data.value = null
   rawToken.value = null
 
@@ -67,82 +79,16 @@ const signOut: SignOutFunc = async (signOutOptions) => {
   return res
 }
 
-const getSession: GetSessionFunc<SessionData | null | void> = async (getSessionOptions) => {
-  const nuxt = useNuxtApp()
+type UseAuthReturn = ReturnType<typeof useLocalAuth> & { csrfRequest: () => Promise<Record<string, any>> }
 
-  const config = useTypedBackendConfig(useRuntimeConfig(), 'local')
-  const { path, method } = config.endpoints.getSession
-  const { data, loading, lastRefreshedAt, token, rawToken } = useAuthState()
-
-  if (!token.value) {
-    return
-  }
-
-  const headers = new Headers({ [config.token.headerName]: token.value } as HeadersInit)
-
-  loading.value = true
-  try {
-    data.value = await _fetch<SessionData>(nuxt, path, { method, headers })
-  } catch {
-    // Clear all data: Request failed so we must not be authenticated
-    data.value = null
-    rawToken.value = null
-  }
-  loading.value = false
-  lastRefreshedAt.value = new Date()
-
-  const { required = false, callbackUrl, onUnauthenticated } = getSessionOptions ?? {}
-  if (required && data.value === null) {
-    if (onUnauthenticated) {
-      return onUnauthenticated()
-    } else {
-      await navigateTo(callbackUrl ?? await getRequestURLWN(nuxt))
-    }
-  }
-
-  return data.value
-}
-
-const signUp = async (credentials: Credentials, signInOptions?: SecondarySignInOptions) => {
-  const nuxt = useNuxtApp()
-
-  const { path, method } = useTypedBackendConfig(useRuntimeConfig(), 'local').endpoints.signUp
-  await _fetch(nuxt, path, {
-    method,
-    body: credentials
-  })
-
-  return signIn(credentials, signInOptions)
-}
-
-interface UseAuthReturn extends CommonUseAuthReturn<typeof signIn, typeof signOut, typeof getSession, SessionData> {
-  signUp: typeof signUp
-  token: Readonly<Ref<string | null>>
-}
 export const useAuth = (): UseAuthReturn => {
-  const {
-    data,
-    status,
-    lastRefreshedAt,
-    token
-  } = useAuthState()
-
-  const getters = {
-    status,
-    data: readonly(data),
-    lastRefreshedAt: readonly(lastRefreshedAt),
-    token: readonly(token)
-  }
-
-  const actions = {
-    getSession,
-    signIn,
-    signOut,
-    signUp
-  }
+  const localAuth = useLocalAuth()
+  // overwrite the local signIn & signOut Function
+  localAuth.signIn = signIn
+  localAuth.signOut = signOut
 
   return {
-    ...getters,
-    ...actions
+    ...localAuth,
+    csrfRequest
   }
 }
