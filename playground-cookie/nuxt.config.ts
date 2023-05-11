@@ -5,15 +5,20 @@ export default defineNuxtConfig({
   },
   auth: {
     provider: {
-      type: 'local',
+      type: 'cookie',
+      cookie: {
+        name: 'XSRF-TOKEN'
+      },
       endpoints: {
-        getSession: { path: '/user' }
+        getSession: { path: '/user' },
+        csrf: { path: '/csrf', method: 'get' }
       },
       pages: {
         login: '/'
       },
       token: {
-        signInResponseTokenPointer: '/token/accessToken'
+        signInResponseTokenPointer: '/token/XSRF-TOKEN',
+        maxAgeInSeconds: 30 * 60
       }
     },
     globalAppMiddleware: {

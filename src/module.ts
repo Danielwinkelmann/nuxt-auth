@@ -47,7 +47,7 @@ const defaultsByBackend: { [key in SupportedAuthProviders]: DeepRequired<Extract
       signOut: { path: '/logout', method: 'post' },
       signUp: { path: '/register', method: 'post' },
       getSession: { path: '/session', method: 'get' },
-      csrf: { path: '/csrf', method: 'get' }
+      csrf: null
     },
     token: {
       signInResponseTokenPointer: '/token',

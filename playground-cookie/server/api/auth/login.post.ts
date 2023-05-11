@@ -1,8 +1,4 @@
 import z from 'zod'
-import { sign } from 'jsonwebtoken'
-
-const refreshTokens: Record<number, Record<string, any>> = {}
-export const SECRET = 'dummy'
 
 export default eventHandler(async (event) => {
   const result = z.object({ username: z.string().min(1), password: z.literal('hunter2') }).safeParse(await readBody(event))
@@ -10,8 +6,11 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Unauthorized, hint: try `hunter2` as password' })
   }
 
-  const expiresIn = 15
-  const refreshToken = Math.floor(Math.random() * (1000000000000000 - 1 + 1)) + 1
+  const cookies = parseCookies(event)
+  const token = cookies['XSRF-TOKEN']
+
+  if (!token) { throw createError({ statusCode: 403, statusMessage: 'Unauthorized, missing XSRF-TOKEN' }) }
+
   const { username } = result.data
   const user = {
     username,
@@ -19,16 +18,10 @@ export default eventHandler(async (event) => {
     name: 'User ' + username
   }
 
-  const accessToken = sign({ ...user, scope: ['test', 'user'] }, SECRET, { expiresIn })
-  refreshTokens[refreshToken] = {
-    accessToken,
-    user
-  }
-
   return {
+    user,
     token: {
-      accessToken,
-      refreshToken
+      'XSRF-TOKEN': token
     }
   }
 })

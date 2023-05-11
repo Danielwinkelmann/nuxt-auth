@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import { useAuth } from '#imports'
-
+import { useAuth, useAuthState } from '#imports'
+const { rawToken } = useAuthState()
 const { signIn, token, data, status, lastRefreshedAt, signOut, getSession } = useAuth()
 
 const username = ref('')
@@ -10,10 +10,11 @@ const password = ref('')
 
 <template>
   <div>
+    <pre>{{ rawToken }}</pre>
     <pre>Status: {{ status }}</pre>
     <pre>Data: {{ data || 'no session data present, are you logged in?' }}</pre>
     <pre>Last refreshed at: {{ lastRefreshedAt || 'no refresh happened' }}</pre>
-    <pre>JWT token: {{ token || 'no token present, are you logged in?' }}</pre>
+    <pre>CSRF token: {{ token || 'no token present, are you logged in?' }}</pre>
     <form @submit.prevent="signIn({ username, password })">
       <input v-model="username" type="text" placeholder="Username">
       <input v-model="password" type="password" placeholder="Password">

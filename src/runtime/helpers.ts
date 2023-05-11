@@ -27,11 +27,10 @@ export const getOriginAndPathnameFromURL = (url: string) => {
  * @param runtimeConfig The runtime config of the application
  * @param type Backend type to be enforced (e.g.: `local` or `authjs`)
  */
-export const useTypedBackendConfig = <T extends SupportedAuthProviders>(runtimeConfig: ReturnType<typeof useRuntimeConfig>, type: T): Extract<DeepRequired<AuthProviders>, { type: T }> => {
-  if (runtimeConfig.auth.provider.type === type) {
-    return runtimeConfig.auth.provider as Extract<DeepRequired<AuthProviders>, { type: T }>
-  }
-  throw new Error('RuntimeError: Type must match at this point')
+export const useTypedBackendConfig = <T extends SupportedAuthProviders>(runtimeConfig: ReturnType<typeof useRuntimeConfig>, _type: T): Extract<DeepRequired<AuthProviders>, { type: T }> => {
+  return runtimeConfig.public.auth.provider as Extract<DeepRequired<AuthProviders>, { type: T }>
+  // TODO: find better solution to throw errors, when using sub-configs
+  // throw new Error('RuntimeError: Type must match at this point')
 }
 
 /**

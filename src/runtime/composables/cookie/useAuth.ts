@@ -8,17 +8,19 @@ import { useAuthState } from './useAuthState'
 import { navigateTo, nextTick, useNuxtApp, useRuntimeConfig } from '#imports'
 
 const csrfRequest = async () => {
-  const nuxt = useNuxtApp()
   const config = useTypedBackendConfig(useRuntimeConfig(), 'cookie')
-  const { path, method } = config.endpoints.csrf
-  return await _fetch<Record<string, any>>(nuxt, path, {
-    method
-  })
+  if (config.endpoints.csrf) {
+    const nuxt = useNuxtApp()
+    const { path, method } = config.endpoints.csrf
+    return await _fetch<Record<string, any>>(nuxt, path, {
+      method
+    })
+  }
 }
 
 const signIn: ReturnType<typeof useLocalAuth>['signIn'] = async (credentials, signInOptions, signInParams) => {
   const nuxt = useNuxtApp()
-  const { rawToken } = useAuthState()
+  const { rawToken, lastRefreshedAt } = useAuthState()
   const { getSession } = useLocalAuth()
   const config = useTypedBackendConfig(useRuntimeConfig(), 'cookie')
   const { path, method } = config.endpoints.signIn
@@ -37,6 +39,7 @@ const signIn: ReturnType<typeof useLocalAuth>['signIn'] = async (credentials, si
       ...credentials,
       ...(signInOptions ?? {})
     },
+    credentials: 'include',
     params: signInParams ?? {}
   })
 
@@ -48,6 +51,9 @@ const signIn: ReturnType<typeof useLocalAuth>['signIn'] = async (credentials, si
 
   rawToken.value = extractedToken
 
+  lastRefreshedAt.value = new Date()
+
+  console.log('Auth: Successfully logged in', extractedToken, lastRefreshedAt.value)
   await nextTick(getSession)
 
   const { callbackUrl, redirect = true } = signInOptions ?? {}
@@ -79,7 +85,7 @@ const signOut: SignOutFunc = async (signOutOptions) => {
   return res
 }
 
-type UseAuthReturn = ReturnType<typeof useLocalAuth> & { csrfRequest: () => Promise<Record<string, any>> }
+type UseAuthReturn = ReturnType<typeof useLocalAuth> & { csrfRequest: () => Promise<Record<string, any> | undefined> }
 
 export const useAuth = (): UseAuthReturn => {
   const localAuth = useLocalAuth()
