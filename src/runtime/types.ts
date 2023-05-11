@@ -39,7 +39,7 @@ interface GlobalMiddlewareOptions {
 /**
  * Available `nuxt-auth` authentication providers.
  */
-export type SupportedAuthProviders = 'authjs' | 'local'
+export type SupportedAuthProviders = 'authjs' | 'local' | 'cookie'
 
 /**
  * Configuration for the `local`-provider.
@@ -138,6 +138,37 @@ type ProviderLocal = {
 }
 
 /**
+ * Configuration for the `cookie`-provider.
+ */
+type ProviderCookie = {
+  /**
+   * Uses the `local` provider to facilitate authentication. Currently, two providers exclusive are supported:
+   * - `authjs`: `next-auth` / `auth.js` based OAuth, Magic URL, Credential provider for non-static applications
+   * - `local`: Username and password provider with support for static-applications
+   * - `cookie`: cookie is an extended version of local scheme, which instead of using a token, depends on cookie set by auth provider.
+   *
+   * Read more here: https://sidebase.io/nuxt-auth/v0.6/getting-started
+   */
+  type: Extract<SupportedAuthProviders, 'cookie'>
+  cookie: {
+    /**
+    * (optional) If set, we check this cookie existence for loggedIn check
+    *
+    * @default 'XSRF-TOKEN'
+    */
+    name: string,
+  },
+  endpoints: {
+    /**
+     * (optional) If set, we send a get request to this endpoint before login
+     *
+     * @example { path: '/csrf', method: 'get' }
+     */
+    csrf?: { path?: string, method?: RouterMethod },
+  }
+} & Omit<ProviderLocal, 'type'>
+
+/**
  * Configuration for the `authjs`-provider.
  */
 export type ProviderAuthjs = {
@@ -172,7 +203,7 @@ export type ProviderAuthjs = {
   addDefaultCallbackUrl?: boolean | string
 }
 
-export type AuthProviders = ProviderAuthjs | ProviderLocal
+export type AuthProviders = ProviderAuthjs | ProviderLocal | ProviderCookie
 
 /**
  * Configuration for the application-side session.
