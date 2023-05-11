@@ -158,13 +158,13 @@ type ProviderCookie = {
     */
     name: string,
   },
-  endpoints: {
+  endpoints?: {
     /**
      * (optional) If set, we send a get request to this endpoint before login
      *
      * @example { path: '/csrf', method: 'get' }
      */
-    csrf?: { path?: string, method?: RouterMethod },
+    csrf?: { path?: string, method?: 'get' } | null,
   }
 } & Omit<ProviderLocal, 'type'>
 
