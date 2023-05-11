@@ -37,6 +37,28 @@ const defaultsByBackend: { [key in SupportedAuthProviders]: DeepRequired<Extract
       maxAgeInSeconds: 30 * 60
     }
   },
+  cookie: {
+    type: 'cookie',
+    pages: {
+      login: '/login'
+    },
+    endpoints: {
+      signIn: { path: '/login', method: 'post' },
+      signOut: { path: '/logout', method: 'post' },
+      signUp: { path: '/register', method: 'post' },
+      getSession: { path: '/session', method: 'get' },
+      csrf: { path: '/csrf', method: 'get' }
+    },
+    token: {
+      signInResponseTokenPointer: '/token',
+      type: 'Bearer',
+      headerName: 'Authorization',
+      maxAgeInSeconds: 30 * 60
+    },
+    cookie: {
+      name: 'XSRF-TOKEN'
+    }
+  },
   authjs: {
     type: 'authjs',
     trustHost: false,
